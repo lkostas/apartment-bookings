@@ -10,6 +10,7 @@ export default function ApartmentBooking() {
   const [kids, setKids] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [editingId, setEditingId] = useState(null);
 
   const API_URL = '/api/bookings';
 
@@ -44,6 +45,45 @@ export default function ApartmentBooking() {
     }
 
     try {
+      if (editingId) {
+        // Update existing booking
+        await updateBooking();
+      } else {
+        // Add new booking
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            apartment: selectedApartment,
+            checkIn,
+            checkOut,
+            adults,
+            kids
+          }),
+        });
+
+        if (!response.ok) throw new Error('Αποτυχία προσθήκης');
+        
+        const savedBooking = await response.json();
+        setBookings([...bookings, savedBooking]);
+        alert('Η κράτηση προστέθηκε επιτυχώς!');
+      }
+      
+      resetForm();
+    } catch (err) {
+      alert('Σφάλμα κατά την προσθήκη. Παρακαλώ δοκιμάστε ξανά.');
+    }
+  };
+
+  const updateBooking = async () => {
+    try {
+      // Delete old booking
+      await fetch(`${API_URL}?id=${editingId}`, { 
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      // Add new booking with same ID
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -56,43 +96,61 @@ export default function ApartmentBooking() {
         }),
       });
 
-      if (!response.ok) throw new Error('Αποτυχία προσθήκης');
+      if (!response.ok) throw new Error('Αποτυχία ενημέρωσης');
       
-      const savedBooking = await response.json();
-      setBookings([...bookings, savedBooking]);
-      setCheckIn('');
-      setCheckOut('');
-      setAdults(0);
-      setKids(0);
-      alert('Η κράτηση προστέθηκε επιτυχώς!');
+      const updatedBooking = await response.json();
+      setBookings(bookings.map(b => b.id === editingId ? updatedBooking : b).filter(b => b.id !== editingId).concat(updatedBooking));
+      alert('Η κράτηση ενημερώθηκε επιτυχώς!');
     } catch (err) {
-      alert('Σφάλμα κατά την προσθήκη. Παρακαλώ δοκιμάστε ξανά.');
+      alert('Σφάλμα κατά την ενημέρωση. Παρακαλώ δοκιμάστε ξανά.');
+      throw err;
     }
+  };
+
+  const editBooking = (booking) => {
+    setEditingId(booking.id);
+    setSelectedApartment(booking.apartment);
+    setCheckIn(booking.checkIn);
+    setCheckOut(booking.checkOut);
+    setAdults(booking.adults || 0);
+    setKids(booking.kids || 0);
+    
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEdit = () => {
+    resetForm();
+  };
+
+  const resetForm = () => {
+    setEditingId(null);
+    setCheckIn('');
+    setCheckOut('');
+    setAdults(0);
+    setKids(0);
+    setSelectedApartment('1');
   };
 
   const deleteBooking = async (id) => {
     if (!confirm('Είστε σίγουροι ότι θέλετε να διαγράψετε αυτή την κράτηση;')) return;
 
     try {
-      console.log('Attempting to delete booking with ID:', id);
-      
       const response = await fetch(`${API_URL}?id=${id}`, { 
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        }
+        headers: { 'Content-Type': 'application/json' }
       });
 
-      console.log('Delete response status:', response.status);
-
-      if (!response.ok) {
-        throw new Error('Αποτυχία διαγραφής');
-      }
+      if (!response.ok) throw new Error('Αποτυχία διαγραφής');
 
       setBookings(bookings.filter(b => b.id !== id));
+      
+      if (editingId === id) {
+        resetForm();
+      }
+      
       alert('Η κράτηση διαγράφηκε επιτυχώς!');
     } catch (err) {
-      console.error('Error deleting booking:', err);
       alert('Σφάλμα κατά τη διαγραφή. Παρακαλώ δοκιμάστε ξανά.');
     }
   };
@@ -134,8 +192,20 @@ export default function ApartmentBooking() {
             <h1 className="text-3xl font-bold text-gray-800">Σύστημα Κρατήσεων Διαμερισμάτων</h1>
           </div>
 
-          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Προσθήκη Νέας Κράτησης</h2>
+          <div className={`border rounded-lg p-4 mb-6 ${editingId ? 'bg-yellow-50 border-yellow-300' : 'bg-indigo-50 border-indigo-200'}`}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-800">
+                {editingId ? 'Επεξεργασία Κράτησης' : 'Προσθήκη Νέας Κράτησης'}
+              </h2>
+              {editingId && (
+                <button
+                  onClick={cancelEdit}
+                  className="text-sm text-gray-600 hover:text-gray-800 underline"
+                >
+                  Ακύρωση
+                </button>
+              )}
+            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
               <div>
@@ -195,9 +265,13 @@ export default function ApartmentBooking() {
               <div className="flex items-end">
                 <button
                   onClick={addBooking}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg"
+                  className={`w-full font-semibold py-2 px-6 rounded-lg ${
+                    editingId 
+                      ? 'bg-yellow-600 hover:bg-yellow-700 text-white' 
+                      : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                  }`}
                 >
-                  Προσθήκη
+                  {editingId ? 'Ενημέρωση' : 'Προσθήκη'}
                 </button>
               </div>
             </div>
@@ -222,7 +296,14 @@ export default function ApartmentBooking() {
                 ) : (
                   <div className="space-y-3">
                     {apartmentBookings.map(booking => (
-                      <div key={booking.id} className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg p-4 border border-indigo-200">
+                      <div 
+                        key={booking.id} 
+                        className={`rounded-lg p-4 border ${
+                          editingId === booking.id 
+                            ? 'bg-yellow-100 border-yellow-300' 
+                            : 'bg-gradient-to-r from-indigo-50 to-blue-50 border-indigo-200'
+                        }`}
+                      >
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
                             <div className="text-sm font-semibold text-indigo-800 mb-2">
@@ -243,12 +324,20 @@ export default function ApartmentBooking() {
                               </div>
                             </div>
                           </div>
-                          <button
-                            onClick={() => deleteBooking(booking.id)}
-                            className="text-red-500 hover:text-red-700 font-medium text-sm px-3 py-1 rounded hover:bg-red-50"
-                          >
-                            Διαγραφή
-                          </button>
+                          <div className="flex flex-col gap-2">
+                            <button
+                              onClick={() => editBooking(booking)}
+                              className="text-blue-600 hover:text-blue-800 font-medium text-sm px-3 py-1 rounded hover:bg-blue-50"
+                            >
+                              Επεξεργασία
+                            </button>
+                            <button
+                              onClick={() => deleteBooking(booking.id)}
+                              className="text-red-500 hover:text-red-700 font-medium text-sm px-3 py-1 rounded hover:bg-red-50"
+                            >
+                              Διαγραφή
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}

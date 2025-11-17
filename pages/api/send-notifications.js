@@ -50,6 +50,9 @@ export default async function handler(req, res) {
       });
     }
 
+    // Parse multiple emails (comma-separated)
+    const emailList = process.env.NOTIFICATION_EMAIL.split(',').map(email => email.trim());
+
     // Send email for each booking
     const emailPromises = upcomingBookings.map(async (booking) => {
       const apartmentName = booking.apartment === '1' ? 'Αριστερό' : 'Δεξί';
@@ -58,7 +61,7 @@ export default async function handler(req, res) {
       
       return resend.emails.send({
         from: 'Κρατήσεις <onboarding@resend.dev>',
-        to: process.env.NOTIFICATION_EMAIL,
+        to: emailList,
         subject: `🔔 Υπενθύμιση: Κράτηση σε 2 μέρες`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -103,7 +106,7 @@ export default async function handler(req, res) {
       message: 'Notifications sent successfully', 
       count: upcomingBookings.length,
       targetDate: targetDate,
-      to: process.env.NOTIFICATION_EMAIL
+      to: emailList
     });
     
   } catch (error) {
@@ -115,3 +118,15 @@ export default async function handler(req, res) {
     });
   }
 }
+```
+
+---
+
+## 📧 Update your Vercel Environment Variable:
+
+1. Go to **Vercel** → Your project → **Settings** → **Environment Variables**
+2. Find `NOTIFICATION_EMAIL`
+3. Click **Edit**
+4. Change the value to:
+```
+   first-email@example.com,second-email@example.com

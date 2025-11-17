@@ -4,60 +4,88 @@ import { neon } from '@neondatabase/serverless';
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export default async function handler(req, res) {
-  // Allow both GET and POST for testing
-  if (req.method !== 'POST' && req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  const debugInfo = {
+    method: req.method,
+    timestamp: new Date().toISOString(),
+    steps: []
+  };
 
   try {
+    debugInfo.steps.push('1. Handler started');
+
+    if (req.method !== 'POST' && req.method !== 'GET') {
+      return res.status(405).json({ error: 'Method not allowed', debug: debugInfo });
+    }
+
+    debugInfo.steps.push('2. Method check passed');
+
+    // Check environment variables
+    debugInfo.hasResendKey = !!process.env.RESEND_API_KEY;
+    debugInfo.hasNotificationEmail = !!process.env.NOTIFICATION_EMAIL;
+    debugInfo.hasDatabaseUrl = !!process.env.DATABASE_URL;
+
+    if (!process.env.RESEND_API_KEY) {
+      debugInfo.steps.push('ERROR: Missing RESEND_API_KEY');
+      return res.status(500).json({ error: 'Missing RESEND_API_KEY', debug: debugInfo });
+    }
+
+    if (!process.env.NOTIFICATION_EMAIL) {
+      debugInfo.steps.push('ERROR: Missing NOTIFICATION_EMAIL');
+      return res.status(500).json({ error: 'Missing NOTIFICATION_EMAIL', debug: debugInfo });
+    }
+
+    if (!process.env.DATABASE_URL) {
+      debugInfo.steps.push('ERROR: Missing DATABASE_URL');
+      return res.status(500).json({ error: 'Missing DATABASE_URL', debug: debugInfo });
+    }
+
+    debugInfo.steps.push('3. Environment variables OK');
+
     const sql = neon(process.env.DATABASE_URL);
+    debugInfo.steps.push('4. Database connection created');
     
-    // Get bookings that check in 2 days from now
     const twoDaysFromNow = new Date();
     twoDaysFromNow.setDate(twoDaysFromNow.getDate() + 2);
     const targetDate = twoDaysFromNow.toISOString().split('T')[0];
     
-    console.log('Checking for bookings on:', targetDate);
+    debugInfo.targetDate = targetDate;
+    debugInfo.steps.push('5. Target date calculated: ' + targetDate);
     
     const upcomingBookings = await sql`
       SELECT * FROM bookings 
       WHERE check_in = ${targetDate}
     `;
 
-    console.log('Found bookings:', upcomingBookings.length);
+    debugInfo.bookingsFound = upcomingBookings.length;
+    debugInfo.steps.push('6. Database query completed: ' + upcomingBookings.length + ' bookings found');
 
     if (upcomingBookings.length === 0) {
+      debugInfo.steps.push('7. No bookings to notify');
       return res.status(200).json({ 
         message: 'No bookings in 2 days',
         count: 0,
-        targetDate: targetDate,
-        info: 'Create a booking with check-in date = ' + targetDate
+        debug: debugInfo
       });
     }
 
-    // Check if notification email is configured
-    if (!process.env.NOTIFICATION_EMAIL) {
-      return res.status(500).json({ 
-        error: 'NOTIFICATION_EMAIL not configured',
-        details: 'Please add NOTIFICATION_EMAIL to environment variables'
-      });
-    }
+    debugInfo.bookingDetails = upcomingBookings.map(b => ({
+      id: b.id,
+      name: b.booking_name,
+      apartment: b.apartment,
+      checkIn: b.check_in,
+      checkOut: b.check_out
+    }));
 
-    // Check if Resend API key is configured
-    if (!process.env.RESEND_API_KEY) {
-      return res.status(500).json({ 
-        error: 'RESEND_API_KEY not configured',
-        details: 'Please add RESEND_API_KEY to environment variables'
-      });
-    }
+    debugInfo.steps.push('7. Preparing to send emails to: ' + process.env.NOTIFICATION_EMAIL);
 
-    // Send email for each booking
     const emailPromises = upcomingBookings.map(async (booking) => {
       const apartmentName = booking.apartment === '1' ? 'Αριστερό' : 'Δεξί';
       const checkInDate = new Date(booking.check_in);
       const checkOutDate = new Date(booking.check_out);
       
-      return resend.emails.send({
+      debugInfo.steps.push('8. Sending email for booking #' + booking.id);
+      
+      const result = await resend.emails.send({
         from: 'Κρατήσεις <onboarding@resend.dev>',
         to: process.env.NOTIFICATION_EMAIL,
         subject: `🔔 Υπενθύμιση: Κράτηση σε 2 μέρες`,
@@ -95,29 +123,35 @@ export default async function handler(req, res) {
           </div>
         `
       });
+
+      debugInfo.steps.push('9. Email sent result: ' + JSON.stringify(result));
+      return result;
     });
 
     const results = await Promise.all(emailPromises);
-    console.log('Emails sent:', results.length);
+    debugInfo.steps.push('10. All emails sent successfully: ' + results.length);
 
     return res.status(200).json({ 
       message: 'Notifications sent successfully', 
       count: upcomingBookings.length,
-      targetDate: targetDate,
-      to: process.env.NOTIFICATION_EMAIL,
-      bookings: upcomingBookings.map(b => ({
-        id: b.id,
-        name: b.booking_name,
-        checkIn: b.check_in
-      }))
+      emailsSent: results.length,
+      debug: debugInfo
     });
     
   } catch (error) {
-    console.error('Notification error:', error);
+    debugInfo.steps.push('ERROR: ' + error.message);
+    debugInfo.error = {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    };
+
+    console.error('Full error:', error);
+
     return res.status(500).json({ 
       error: 'Failed to send notifications',
       details: error.message,
-      stack: error.stack
+      debug: debugInfo
     });
   }
 }

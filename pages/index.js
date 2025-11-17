@@ -27,6 +27,7 @@ export default function ApartmentBooking() {
       setBookings(data);
       setError('');
     } catch (err) {
+      console.error('Load error:', err);
       setError('Σφάλμα φόρτωσης. Δοκιμάστε να ανανεώσετε τη σελίδα.');
     } finally {
       setLoading(false);
@@ -46,10 +47,8 @@ export default function ApartmentBooking() {
 
     try {
       if (editingId) {
-        // Update existing booking
         await updateBooking();
       } else {
-        // Add new booking
         const response = await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -62,7 +61,11 @@ export default function ApartmentBooking() {
           }),
         });
 
-        if (!response.ok) throw new Error('Αποτυχία προσθήκης');
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('Add error:', errorData);
+          throw new Error('Αποτυχία προσθήκης');
+        }
         
         const savedBooking = await response.json();
         setBookings([...bookings, savedBooking]);
@@ -70,21 +73,25 @@ export default function ApartmentBooking() {
       }
       
       resetForm();
+      await loadBookings();
     } catch (err) {
+      console.error('Error:', err);
       alert('Σφάλμα κατά την προσθήκη. Παρακαλώ δοκιμάστε ξανά.');
     }
   };
 
   const updateBooking = async () => {
     try {
-      // Delete old booking
-      await fetch(`${API_URL}?id=${editingId}`, { 
+      const deleteResponse = await fetch(`${API_URL}?id=${editingId}`, { 
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' }
       });
 
-      // Add new booking with same ID
-      const response = await fetch(API_URL, {
+      if (!deleteResponse.ok) {
+        throw new Error('Αποτυχία διαγραφής παλιάς κράτησης');
+      }
+
+      const addResponse = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -96,12 +103,11 @@ export default function ApartmentBooking() {
         }),
       });
 
-      if (!response.ok) throw new Error('Αποτυχία ενημέρωσης');
+      if (!addResponse.ok) throw new Error('Αποτυχία ενημέρωσης');
       
-      const updatedBooking = await response.json();
-      setBookings(bookings.map(b => b.id === editingId ? updatedBooking : b).filter(b => b.id !== editingId).concat(updatedBooking));
       alert('Η κράτηση ενημερώθηκε επιτυχώς!');
     } catch (err) {
+      console.error('Update error:', err);
       alert('Σφάλμα κατά την ενημέρωση. Παρακαλώ δοκιμάστε ξανά.');
       throw err;
     }
@@ -115,7 +121,6 @@ export default function ApartmentBooking() {
     setAdults(booking.adults || 0);
     setKids(booking.kids || 0);
     
-    // Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -141,7 +146,11 @@ export default function ApartmentBooking() {
         headers: { 'Content-Type': 'application/json' }
       });
 
-      if (!response.ok) throw new Error('Αποτυχία διαγραφής');
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Delete error:', errorData);
+        throw new Error('Αποτυχία διαγραφής');
+      }
 
       setBookings(bookings.filter(b => b.id !== id));
       
@@ -151,6 +160,7 @@ export default function ApartmentBooking() {
       
       alert('Η κράτηση διαγράφηκε επιτυχώς!');
     } catch (err) {
+      console.error('Error:', err);
       alert('Σφάλμα κατά τη διαγραφή. Παρακαλώ δοκιμάστε ξανά.');
     }
   };
@@ -162,7 +172,8 @@ export default function ApartmentBooking() {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('el-GR', {
+    const date = new Date(dateString + 'T00:00:00');
+    return date.toLocaleDateString('el-GR', {
       month: 'short',
       day: 'numeric',
       year: 'numeric'

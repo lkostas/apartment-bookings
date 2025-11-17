@@ -13,15 +13,17 @@ export default async function handler(req, res) {
     const sql = neon(process.env.DATABASE_URL);
 
     // Create table if it doesn't exist
-    await sql`
-      CREATE TABLE IF NOT EXISTS bookings (
-        id BIGINT PRIMARY KEY,
-        apartment VARCHAR(10) NOT NULL,
-        check_in DATE NOT NULL,
-        check_out DATE NOT NULL,
-        created_at TIMESTAMP DEFAULT NOW()
-      )
-    `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS bookings (
+      id BIGINT PRIMARY KEY,
+      apartment VARCHAR(10) NOT NULL,
+      check_in DATE NOT NULL,
+      check_out DATE NOT NULL,
+      adults INTEGER DEFAULT 0,
+      kids INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `;
 
     if (req.method === 'GET') {
       const rows = await sql`SELECT * FROM bookings ORDER BY check_in ASC`;

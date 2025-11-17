@@ -13,6 +13,7 @@ export default function ApartmentBooking() {
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [conflictWarning, setConflictWarning] = useState('');
+  const [testingNotification, setTestingNotification] = useState(false);
 
   const API_URL = '/api/bookings';
 
@@ -36,25 +37,47 @@ export default function ApartmentBooking() {
     }
   };
 
+  const testNotifications = async () => {
+    if (!confirm('Θα σταλεί δοκιμαστικό email ειδοποίησης. Συνεχίζετε;')) {
+      return;
+    }
+
+    setTestingNotification(true);
+    try {
+      const response = await fetch('/api/send-notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        alert(`✅ Επιτυχία! Στάλθηκαν ${data.count || 0} ειδοποιήσεις.\n\nΕλέγξτε το email σας!`);
+      } else {
+        alert(`❌ Σφάλμα: ${data.error}\n\n${data.details || ''}`);
+      }
+    } catch (err) {
+      alert(`❌ Σφάλμα δικτύου: ${err.message}`);
+    } finally {
+      setTestingNotification(false);
+    }
+  };
+
   const checkDateConflict = (apartment, newCheckIn, newCheckOut, excludeId = null) => {
     const newStart = new Date(newCheckIn);
     const newEnd = new Date(newCheckOut);
 
     const conflicts = bookings.filter(booking => {
-      // Skip the booking being edited
       if (excludeId && booking.id === excludeId) return false;
-      
-      // Only check same apartment
       if (booking.apartment !== apartment) return false;
 
       const existingStart = new Date(booking.checkIn);
       const existingEnd = new Date(booking.checkOut);
 
-      // Check if dates overlap
       return (
-        (newStart >= existingStart && newStart < existingEnd) || // New check-in during existing booking
-        (newEnd > existingStart && newEnd <= existingEnd) ||     // New check-out during existing booking
-        (newStart <= existingStart && newEnd >= existingEnd)     // New booking completely contains existing
+        (newStart >= existingStart && newStart < existingEnd) ||
+        (newEnd > existingStart && newEnd <= existingEnd) ||
+        (newStart <= existingStart && newEnd >= existingEnd)
       );
     });
 
@@ -72,7 +95,6 @@ export default function ApartmentBooking() {
       return;
     }
 
-    // Check for conflicts
     const conflicts = checkDateConflict(selectedApartment, checkIn, checkOut, editingId);
     
     if (conflicts.length > 0) {
@@ -226,7 +248,6 @@ export default function ApartmentBooking() {
     return `${day}/${month}/${year}`;
   };
 
-  // Check for conflicts when dates change
   useEffect(() => {
     if (checkIn && checkOut && selectedApartment) {
       const conflicts = checkDateConflict(selectedApartment, checkIn, checkOut, editingId);
@@ -261,9 +282,18 @@ export default function ApartmentBooking() {
         )}
 
         <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 mb-6">
-          <div className="flex items-center gap-3 mb-6">
-            <Calendar className="w-8 h-8 text-indigo-600" />
-            <h1 className="text-3xl font-bold text-gray-800">Σύστημα Κρατήσεων Διαμερισμάτων</h1>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <Calendar className="w-8 h-8 text-indigo-600" />
+              <h1 className="text-3xl font-bold text-gray-800">Σύστημα Κρατήσεων Διαμερισμάτων</h1>
+            </div>
+            <button
+              onClick={testNotifications}
+              disabled={testingNotification}
+              className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {testingNotification ? '⏳ Αποστολή...' : '🔔 Δοκιμή Email'}
+            </button>
           </div>
 
           <div className={`border rounded-lg p-4 mb-6 ${editingId ? 'bg-yellow-50 border-yellow-300' : 'bg-indigo-50 border-indigo-200'}`}>
@@ -445,7 +475,7 @@ export default function ApartmentBooking() {
         </div>
 
         <div className="mt-6 bg-white rounded-lg shadow p-4 text-sm text-gray-600 text-center">
-          <strong>Σημείωση:</strong> Όλες οι κρατήσεις είναι κοινές για όλους τους χρήστες.
+          <strong>Σημείωση:</strong> Όλες οι κρατήσεις είναι κοινές για όλους τους χρήστες. Ειδοποιήσεις στέλνονται αυτόματα 2 μέρες πριν την άφιξη.
         </div>
       </div>
     </div>

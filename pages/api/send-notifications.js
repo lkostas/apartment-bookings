@@ -118,15 +118,3 @@ export default async function handler(req, res) {
     });
   }
 }
-```
-
----
-
-## 📧 Update your Vercel Environment Variable:
-
-1. Go to **Vercel** → Your project → **Settings** → **Environment Variables**
-2. Find `NOTIFICATION_EMAIL`
-3. Click **Edit**
-4. Change the value to:
-```
-   first-email@example.com,second-email@example.com

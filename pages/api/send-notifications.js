@@ -30,7 +30,8 @@ export default async function handler(req, res) {
       return res.status(200).json({ 
         message: 'No bookings in 2 days',
         count: 0,
-        targetDate: targetDate
+        targetDate: targetDate,
+        info: 'Create a booking with check-in date = ' + targetDate
       });
     }
 
@@ -50,9 +51,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Parse multiple emails (comma-separated)
-    const emailList = process.env.NOTIFICATION_EMAIL.split(',').map(email => email.trim());
-
     // Send email for each booking
     const emailPromises = upcomingBookings.map(async (booking) => {
       const apartmentName = booking.apartment === '1' ? 'Αριστερό' : 'Δεξί';
@@ -61,7 +59,7 @@ export default async function handler(req, res) {
       
       return resend.emails.send({
         from: 'Κρατήσεις <onboarding@resend.dev>',
-        to: emailList,
+        to: process.env.NOTIFICATION_EMAIL,
         subject: `🔔 Υπενθύμιση: Κράτηση σε 2 μέρες`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -106,7 +104,12 @@ export default async function handler(req, res) {
       message: 'Notifications sent successfully', 
       count: upcomingBookings.length,
       targetDate: targetDate,
-      to: emailList
+      to: process.env.NOTIFICATION_EMAIL,
+      bookings: upcomingBookings.map(b => ({
+        id: b.id,
+        name: b.booking_name,
+        checkIn: b.check_in
+      }))
     });
     
   } catch (error) {

@@ -12,6 +12,7 @@ export default function ApartmentBooking() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState(null);
+  const [conflictWarning, setConflictWarning] = useState('');
 
   const API_URL = '/api/bookings';
 
@@ -35,6 +36,31 @@ export default function ApartmentBooking() {
     }
   };
 
+  const checkDateConflict = (apartment, newCheckIn, newCheckOut, excludeId = null) => {
+    const newStart = new Date(newCheckIn);
+    const newEnd = new Date(newCheckOut);
+
+    const conflicts = bookings.filter(booking => {
+      // Skip the booking being edited
+      if (excludeId && booking.id === excludeId) return false;
+      
+      // Only check same apartment
+      if (booking.apartment !== apartment) return false;
+
+      const existingStart = new Date(booking.checkIn);
+      const existingEnd = new Date(booking.checkOut);
+
+      // Check if dates overlap
+      return (
+        (newStart >= existingStart && newStart < existingEnd) || // New check-in during existing booking
+        (newEnd > existingStart && newEnd <= existingEnd) ||     // New check-out during existing booking
+        (newStart <= existingStart && newEnd >= existingEnd)     // New booking completely contains existing
+      );
+    });
+
+    return conflicts;
+  };
+
   const addBooking = async () => {
     if (!checkIn || !checkOut) {
       alert('Παρακαλώ επιλέξτε και τις δύο ημερομηνίες');
@@ -44,6 +70,23 @@ export default function ApartmentBooking() {
     if (new Date(checkOut) <= new Date(checkIn)) {
       alert('Η ημερομηνία αναχώρησης πρέπει να είναι μετά την άφιξη');
       return;
+    }
+
+    // Check for conflicts
+    const conflicts = checkDateConflict(selectedApartment, checkIn, checkOut, editingId);
+    
+    if (conflicts.length > 0) {
+      const conflictMessages = conflicts.map(c => 
+        `${c.bookingName || 'Κράτηση #' + c.id}: ${formatDate(c.checkIn)} - ${formatDate(c.checkOut)}`
+      ).join('\n');
+      
+      const confirmOverlap = confirm(
+        `⚠️ ΠΡΟΣΟΧΗ: Οι ημερομηνίες επικαλύπτονται με υπάρχουσα κράτηση!\n\n${conflictMessages}\n\nΘέλετε να συνεχίσετε ούτως ή άλλως;`
+      );
+      
+      if (!confirmOverlap) {
+        return;
+      }
     }
 
     try {
@@ -124,6 +167,7 @@ export default function ApartmentBooking() {
     setAdults(booking.adults || 0);
     setKids(booking.kids || 0);
     setBookingName(booking.bookingName || '');
+    setConflictWarning('');
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -140,6 +184,7 @@ export default function ApartmentBooking() {
     setKids(0);
     setBookingName('');
     setSelectedApartment('1');
+    setConflictWarning('');
   };
 
   const deleteBooking = async (id) => {
@@ -181,6 +226,23 @@ export default function ApartmentBooking() {
     return `${day}/${month}/${year}`;
   };
 
+  // Check for conflicts when dates change
+  useEffect(() => {
+    if (checkIn && checkOut && selectedApartment) {
+      const conflicts = checkDateConflict(selectedApartment, checkIn, checkOut, editingId);
+      if (conflicts.length > 0) {
+        const conflictText = conflicts.map(c => 
+          `${c.bookingName || 'Κράτηση #' + c.id} (${formatDate(c.checkIn)} - ${formatDate(c.checkOut)})`
+        ).join(', ');
+        setConflictWarning(`⚠️ Επικάλυψη με: ${conflictText}`);
+      } else {
+        setConflictWarning('');
+      }
+    } else {
+      setConflictWarning('');
+    }
+  }, [checkIn, checkOut, selectedApartment, bookings, editingId]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
@@ -218,6 +280,12 @@ export default function ApartmentBooking() {
                 </button>
               )}
             </div>
+
+            {conflictWarning && (
+              <div className="bg-orange-100 border border-orange-400 text-orange-800 px-4 py-3 rounded mb-4 text-sm">
+                {conflictWarning}
+              </div>
+            )}
             
             <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
               <div>

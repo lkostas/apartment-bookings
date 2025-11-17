@@ -64,13 +64,23 @@ export default async function handler(req, res) {
       return res.status(201).json(newBooking);
     }
 
-    if (req.method === 'DELETE') {
-      const id = parseInt(req.url.split('/').pop());
-      
-      await sql`DELETE FROM bookings WHERE id = ${id}`;
-      
-      return res.status(200).json({ success: true });
-    }
+   if (req.method === 'DELETE') {
+  // Extract ID from URL more reliably
+  const urlParts = req.url.split('/');
+  const id = parseInt(urlParts[urlParts.length - 1]);
+  
+  if (!id || isNaN(id)) {
+    return res.status(400).json({ error: 'Invalid booking ID' });
+  }
+  
+  const result = await sql`DELETE FROM bookings WHERE id = ${id} RETURNING id`;
+  
+  if (result.length === 0) {
+    return res.status(404).json({ error: 'Booking not found' });
+  }
+  
+  return res.status(200).json({ success: true, deleted: id });
+}
 
     return res.status(405).json({ error: 'Method not allowed' });
     

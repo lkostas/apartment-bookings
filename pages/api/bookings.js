@@ -25,18 +25,20 @@ export default async function handler(req, res) {
     )
   `;
 
-    if (req.method === 'GET') {
-      const rows = await sql`SELECT * FROM bookings ORDER BY check_in ASC`;
-      
-      const bookings = rows.map(row => ({
-        id: Number(row.id),
-        apartment: row.apartment,
-        checkIn: row.check_in,
-        checkOut: row.check_out,
-        createdAt: row.created_at
-      }));
-      
-      return res.status(200).json(bookings);
+      if (req.method === 'GET') {
+    const rows = await sql`SELECT * FROM bookings ORDER BY check_in ASC`;
+    
+    const bookings = rows.map(row => ({
+      id: Number(row.id),
+      apartment: row.apartment,
+      checkIn: row.check_in,
+      checkOut: row.check_out,
+      adults: row.adults || 0,
+      kids: row.kids || 0,
+      createdAt: row.created_at
+    }));
+    
+    return res.status(200).json(bookings);
     }
 
      if (req.method === 'POST') {

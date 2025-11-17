@@ -12,7 +12,7 @@ if (redisUrl) {
   if (match) {
     const [, password, host, port] = match;
     redis = new Redis({
-      url: `https://${host}:${port}`,
+      url: `http://${host}:${port}`, // Changed to http:// instead of https://
       token: password,
     });
   }

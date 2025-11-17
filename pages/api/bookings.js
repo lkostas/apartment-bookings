@@ -1,6 +1,12 @@
-import { kv } from '@vercel/kv';
+import { createClient } from '@vercel/kv';
 
 const BOOKINGS_KEY = 'apartment-bookings';
+
+// Create KV client using REDIS_URL
+const kv = createClient({
+  url: process.env.REDIS_URL,
+  token: process.env.REDIS_URL // For Redis, the URL contains the token
+});
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');

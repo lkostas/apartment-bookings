@@ -27,6 +27,7 @@ export default async function handler(req, res) {
     try {
       await sql`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS adults INTEGER DEFAULT 0`;
       await sql`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS kids INTEGER DEFAULT 0`;
+      await sql`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_name VARCHAR(255) DEFAULT ''`;
     } catch (alterError) {
       console.log('Columns might already exist:', alterError.message);
     }
@@ -45,6 +46,7 @@ export default async function handler(req, res) {
           checkOut: checkOutDate.toISOString().split('T')[0],
           adults: row.adults || 0,
           kids: row.kids || 0,
+          bookingName: row.booking_name || '',
           createdAt: row.created_at
         };
       });
@@ -53,7 +55,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { apartment, checkIn, checkOut, adults, kids } = req.body;
+      const { apartment, checkIn, checkOut, adults, kids, bookingName } = req.body;
       
       if (!apartment || !checkIn || !checkOut) {
         return res.status(400).json({ error: 'Λείπουν απαιτούμενα πεδία' });
@@ -62,10 +64,11 @@ export default async function handler(req, res) {
       const id = Date.now();
       const numAdults = parseInt(adults) || 0;
       const numKids = parseInt(kids) || 0;
+      const name = bookingName || '';
       
       await sql`
-        INSERT INTO bookings (id, apartment, check_in, check_out, adults, kids)
-        VALUES (${id}, ${apartment}, ${checkIn}, ${checkOut}, ${numAdults}, ${numKids})
+        INSERT INTO bookings (id, apartment, check_in, check_out, adults, kids, booking_name)
+        VALUES (${id}, ${apartment}, ${checkIn}, ${checkOut}, ${numAdults}, ${numKids}, ${name})
       `;
       
       const newBooking = {
@@ -75,6 +78,7 @@ export default async function handler(req, res) {
         checkOut,
         adults: numAdults,
         kids: numKids,
+        bookingName: name,
         createdAt: new Date().toISOString()
       };
       

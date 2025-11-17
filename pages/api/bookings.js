@@ -1,21 +1,45 @@
-import { createClient } from '@vercel/kv';
+import { Redis } from '@upstash/redis';
 
 const BOOKINGS_KEY = 'apartment-bookings';
 
-// Create KV client using REDIS_URL
-const kv = createClient({
-  url: process.env.REDIS_URL,
-  token: process.env.REDIS_URL // For Redis, the URL contains the token
-});
+// Parse REDIS_URL to extract components
+const redisUrl = process.env.REDIS_URL;
+let redis;
+
+if (redisUrl) {
+  // Extract host, port, and password from redis://default:password@host:port format
+  const match = redisUrl.match(/redis:\/\/(?:.*?):(.+?)@(.+?):(\d+)/);
+  if (match) {
+    const [, password, host, port] = match;
+    redis = new Redis({
+      url: `https://${host}:${port}`,
+      token: password,
+    });
+  }
+}
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (!redis) {
+    return res.status(500).json({ error: 'Database not configured' });
+  }
 
   try {
     if (req.method === 'GET') {
-      const bookings = await kv.get(BOOKINGS_KEY) || [];
+      let bookings = await redis.get(BOOKINGS_KEY);
+      if (!bookings) {
+        bookings = [];
+        await redis.set(BOOKINGS_KEY, JSON.stringify(bookings));
+      } else if (typeof bookings === 'string') {
+        bookings = JSON.parse(bookings);
+      }
       return res.status(200).json(bookings);
     }
 
@@ -34,24 +58,42 @@ export default async function handler(req, res) {
         createdAt: new Date().toISOString()
       };
 
-      const bookings = await kv.get(BOOKINGS_KEY) || [];
+      let bookings = await redis.get(BOOKINGS_KEY);
+      if (!bookings) {
+        bookings = [];
+      } else if (typeof bookings === 'string') {
+        bookings = JSON.parse(bookings);
+      }
+      
       bookings.push(newBooking);
-      await kv.set(BOOKINGS_KEY, bookings);
+      await redis.set(BOOKINGS_KEY, JSON.stringify(bookings));
       
       return res.status(201).json(newBooking);
     }
 
     if (req.method === 'DELETE') {
       const id = parseInt(req.url.split('/').pop());
-      const bookings = await kv.get(BOOKINGS_KEY) || [];
+      
+      let bookings = await redis.get(BOOKINGS_KEY);
+      if (!bookings) {
+        bookings = [];
+      } else if (typeof bookings === 'string') {
+        bookings = JSON.parse(bookings);
+      }
+      
       const updatedBookings = bookings.filter(b => b.id !== id);
-      await kv.set(BOOKINGS_KEY, updatedBookings);
+      await redis.set(BOOKINGS_KEY, JSON.stringify(updatedBookings));
+      
       return res.status(200).json({ success: true });
     }
 
-    res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ error: 'Method not allowed' });
+    
   } catch (error) {
     console.error('Database error:', error);
-    res.status(500).json({ error: 'Σφάλμα βάσης δεδομένων' });
+    return res.status(500).json({ 
+      error: 'Σφάλμα βάσης δεδομένων',
+      details: error.message 
+    });
   }
 }

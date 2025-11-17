@@ -39,30 +39,34 @@ export default async function handler(req, res) {
       return res.status(200).json(bookings);
     }
 
-    if (req.method === 'POST') {
-      const { apartment, checkIn, checkOut } = req.body;
-      
-      if (!apartment || !checkIn || !checkOut) {
-        return res.status(400).json({ error: 'Λείπουν απαιτούμενα πεδία' });
-      }
-
-      const id = Date.now();
-      
-      await sql`
-        INSERT INTO bookings (id, apartment, check_in, check_out)
-        VALUES (${id}, ${apartment}, ${checkIn}, ${checkOut})
-      `;
-      
-      const newBooking = {
-        id,
-        apartment,
-        checkIn,
-        checkOut,
-        createdAt: new Date().toISOString()
-      };
-      
-      return res.status(201).json(newBooking);
+     if (req.method === 'POST') {
+    const { apartment, checkIn, checkOut, adults, kids } = req.body;
+    
+    if (!apartment || !checkIn || !checkOut) {
+      return res.status(400).json({ error: 'Λείπουν απαιτούμενα πεδία' });
     }
+  
+    const id = Date.now();
+    const numAdults = parseInt(adults) || 0;
+    const numKids = parseInt(kids) || 0;
+    
+    await sql`
+      INSERT INTO bookings (id, apartment, check_in, check_out, adults, kids)
+      VALUES (${id}, ${apartment}, ${checkIn}, ${checkOut}, ${numAdults}, ${numKids})
+    `;
+    
+    const newBooking = {
+      id,
+      apartment,
+      checkIn,
+      checkOut,
+      adults: numAdults,
+      kids: numKids,
+      createdAt: new Date().toISOString()
+    };
+    
+    return res.status(201).json(newBooking);
+  }
 
     return res.status(405).json({ error: 'Method not allowed' });
     

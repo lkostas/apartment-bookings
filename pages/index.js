@@ -142,8 +142,8 @@ export default function ApartmentBooking() {
                   onChange={(e) => setSelectedApartment(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                 >
-                  <option value="1">Διαμέρισμα 1</option>
-                  <option value="2">Διαμέρισμα 2</option>
+                  <option value="1">Διαμέρισμα Αριστερό</option>
+                  <option value="2">Διαμέρισμα Δεξί</option>
                 </select>
               </div>
 

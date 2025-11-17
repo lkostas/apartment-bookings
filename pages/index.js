@@ -177,12 +177,8 @@ export default function ApartmentBooking() {
   };
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString + 'T00:00:00');
-    return date.toLocaleDateString('el-GR', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
   };
 
   if (loading) {

@@ -8,6 +8,7 @@ export default function ApartmentBooking() {
   const [checkOut, setCheckOut] = useState('');
   const [adults, setAdults] = useState(0);
   const [kids, setKids] = useState(0);
+  const [bookingName, setBookingName] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState(null);
@@ -57,7 +58,8 @@ export default function ApartmentBooking() {
             checkIn,
             checkOut,
             adults,
-            kids
+            kids,
+            bookingName
           }),
         });
 
@@ -99,7 +101,8 @@ export default function ApartmentBooking() {
           checkIn,
           checkOut,
           adults,
-          kids
+          kids,
+          bookingName
         }),
       });
 
@@ -120,6 +123,7 @@ export default function ApartmentBooking() {
     setCheckOut(booking.checkOut);
     setAdults(booking.adults || 0);
     setKids(booking.kids || 0);
+    setBookingName(booking.bookingName || '');
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -134,6 +138,7 @@ export default function ApartmentBooking() {
     setCheckOut('');
     setAdults(0);
     setKids(0);
+    setBookingName('');
     setSelectedApartment('1');
   };
 
@@ -190,7 +195,7 @@ export default function ApartmentBooking() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
             {error}
@@ -218,7 +223,18 @@ export default function ApartmentBooking() {
               )}
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Όνομα Κράτησης</label>
+                <input
+                  type="text"
+                  value={bookingName}
+                  onChange={(e) => setBookingName(e.target.value)}
+                  placeholder="π.χ. Γιάννης Παπ."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Διαμέρισμα</label>
                 <select
@@ -226,143 +242,13 @@ export default function ApartmentBooking() {
                   onChange={(e) => setSelectedApartment(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                 >
-                  <option value="1">Διαμέρισμα Αριστερό</option>
-                  <option value="2">Διαμέρισμα Δεξί</option>
+                  <option value="1">Αριστερό</option>
+                  <option value="2">Δεξί</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Ημερομηνία Άφιξης</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Άφιξη</label>
                 <input
                   type="date"
                   value={checkIn}
-                  onChange={(e) => setCheckIn(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Ημερομηνία Αναχώρησης</label>
-                <input
-                  type="date"
-                  value={checkOut}
-                  onChange={(e) => setCheckOut(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Ενήλικες</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={adults}
-                  onChange={(e) => setAdults(parseInt(e.target.value) || 0)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Παιδιά</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={kids}
-                  onChange={(e) => setKids(parseInt(e.target.value) || 0)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div className="flex items-end">
-                <button
-                  onClick={addBooking}
-                  className={`w-full font-semibold py-2 px-6 rounded-lg ${
-                    editingId 
-                      ? 'bg-yellow-600 hover:bg-yellow-700 text-white' 
-                      : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                  }`}
-                >
-                  {editingId ? 'Ενημέρωση' : 'Προσθήκη'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {['1', '2'].map(apartmentId => {
-            const apartmentBookings = getBookingsForApartment(apartmentId);
-            
-            return (
-              <div key={apartmentId} className="bg-white rounded-2xl shadow-xl p-6">
-                <h2 className="text-2xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-indigo-200">
-                  {apartmentId === '1' ? 'Διαμέρισμα Αριστερό' : 'Διαμέρισμα Δεξί'}
-                </h2>
-
-                {apartmentBookings.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <p>Δεν υπάρχουν κρατήσεις ακόμα</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {apartmentBookings.map(booking => (
-                      <div 
-                        key={booking.id} 
-                        className={`rounded-lg p-4 border ${
-                          editingId === booking.id 
-                            ? 'bg-yellow-100 border-yellow-300' 
-                            : 'bg-gradient-to-r from-indigo-50 to-blue-50 border-indigo-200'
-                        }`}
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="text-sm font-semibold text-indigo-800 mb-2">
-                              Κράτηση #{booking.id}
-                            </div>
-                            <div className="text-gray-700">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="font-medium">Άφιξη:</span>
-                                <span>{formatDate(booking.checkIn)}</span>
-                              </div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="font-medium">Αναχώρηση:</span>
-                                <span>{formatDate(booking.checkOut)}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">Άτομα:</span>
-                                <span>{booking.adults || 0} ενήλικες, {booking.kids || 0} παιδιά</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex flex-col gap-2">
-                            <button
-                              onClick={() => editBooking(booking)}
-                              className="text-blue-600 hover:text-blue-800 font-medium text-sm px-3 py-1 rounded hover:bg-blue-50"
-                            >
-                              Επεξεργασία
-                            </button>
-                            <button
-                              onClick={() => deleteBooking(booking.id)}
-                              className="text-red-500 hover:text-red-700 font-medium text-sm px-3 py-1 rounded hover:bg-red-50"
-                            >
-                              Διαγραφή
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="mt-6 bg-white rounded-lg shadow p-4 text-sm text-gray-600 text-center">
-          <strong>Σημείωση:</strong> Όλες οι κρατήσεις είναι κοινές για όλους τους χρήστες.
-        </div>
-      </div>
-    </div>
-  );
-}

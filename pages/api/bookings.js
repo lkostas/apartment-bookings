@@ -27,15 +27,21 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const rows = await sql`SELECT * FROM bookings ORDER BY check_in ASC`;
       
-      const bookings = rows.map(row => ({
-        id: Number(row.id),
-        apartment: row.apartment,
-        checkIn: row.check_in,
-        checkOut: row.check_out,
-        adults: row.adults || 0,
-        kids: row.kids || 0,
-        createdAt: row.created_at
-      }));
+      const bookings = rows.map(row => {
+        // Convert dates to YYYY-MM-DD format
+        const checkInDate = new Date(row.check_in);
+        const checkOutDate = new Date(row.check_out);
+        
+        return {
+          id: Number(row.id),
+          apartment: row.apartment,
+          checkIn: checkInDate.toISOString().split('T')[0],
+          checkOut: checkOutDate.toISOString().split('T')[0],
+          adults: row.adults || 0,
+          kids: row.kids || 0,
+          createdAt: row.created_at
+        };
+      });
       
       return res.status(200).json(bookings);
     }
@@ -76,8 +82,6 @@ export default async function handler(req, res) {
       if (!bookingId || isNaN(bookingId)) {
         return res.status(400).json({ error: 'Invalid booking ID' });
       }
-      
-      console.log('Deleting booking with ID:', bookingId);
       
       const result = await sql`DELETE FROM bookings WHERE id = ${bookingId} RETURNING id`;
       

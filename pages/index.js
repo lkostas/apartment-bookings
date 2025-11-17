@@ -185,9 +185,9 @@ export default function ApartmentBooking() {
             
             return (
               <div key={apartmentId} className="bg-white rounded-2xl shadow-xl p-6">
-                <h2 className="text-2xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-indigo-200">
-                  Διαμέρισμα {apartmentId}
-                </h2>
+               <h2 className="text-2xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-indigo-200">
+                 {apartmentId === '1' ? 'Διαμέρισμα Αριστερό' : 'Διαμέρισμα Δεξί'}
+               </h2>
 
                 {apartmentBookings.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">

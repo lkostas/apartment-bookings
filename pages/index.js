@@ -6,11 +6,10 @@ export default function ApartmentBooking() {
   const [selectedApartment, setSelectedApartment] = useState('1');
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
-  const [adults, setAdults] = useState('');
+  const [adults, setAdults] = useState(0);
   const [kids, setKids] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
 
   const API_URL = '/api/bookings';
 
@@ -45,17 +44,18 @@ export default function ApartmentBooking() {
     }
 
     try {
-       const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      apartment: selectedApartment,
-      checkIn,
-      checkOut,
-      adults,
-      kids
-      }),
-    });
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apartment: selectedApartment,
+          checkIn,
+          checkOut,
+          adults,
+          kids
+        }),
+      });
+
       if (!response.ok) throw new Error('Αποτυχία προσθήκης');
       
       const savedBooking = await response.json();
@@ -70,35 +70,32 @@ export default function ApartmentBooking() {
     }
   };
 
- const deleteBooking = async (id) => {
-  if (!confirm('Είστε σίγουροι ότι θέλετε να διαγράψετε αυτή την κράτηση;')) return;
+  const deleteBooking = async (id) => {
+    if (!confirm('Είστε σίγουροι ότι θέλετε να διαγράψετε αυτή την κράτηση;')) return;
 
-  try {
-    console.log('Attempting to delete booking with ID:', id);
-    
-    const response = await fetch(`${API_URL}/${id}`, { 
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
+    try {
+      console.log('Attempting to delete booking with ID:', id);
+      
+      const response = await fetch(`${API_URL}?id=${id}`, { 
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      console.log('Delete response status:', response.status);
+
+      if (!response.ok) {
+        throw new Error('Αποτυχία διαγραφής');
       }
-    });
 
-    console.log('Delete response status:', response.status);
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Delete error:', errorData);
-      throw new Error('Αποτυχία διαγραφής');
+      setBookings(bookings.filter(b => b.id !== id));
+      alert('Η κράτηση διαγράφηκε επιτυχώς!');
+    } catch (err) {
+      console.error('Error deleting booking:', err);
+      alert('Σφάλμα κατά τη διαγραφή. Παρακαλώ δοκιμάστε ξανά.');
     }
-
-    // Remove from state immediately
-    setBookings(bookings.filter(b => b.id !== id));
-    alert('Η κράτηση διαγράφηκε επιτυχώς!');
-  } catch (err) {
-    console.error('Error deleting booking:', err);
-    alert('Σφάλμα κατά τη διαγραφή. Παρακαλώ δοκιμάστε ξανά.');
-  }
-};
+  };
 
   const getBookingsForApartment = (apartmentId) => {
     return bookings
@@ -141,69 +138,71 @@ export default function ApartmentBooking() {
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Προσθήκη Νέας Κράτησης</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Διαμέρισμα</label>
-        <select
-          value={selectedApartment}
-          onChange={(e) => setSelectedApartment(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-        >
-          <option value="1">Διαμέρισμα Αριστερό</option>
-          <option value="2">Διαμέρισμα Δεξί</option>
-        </select>
-      </div>
-    
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Ημερομηνία Άφιξης</label>
-        <input
-          type="date"
-          value={checkIn}
-          onChange={(e) => setCheckIn(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-        />
-      </div>
-    
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Ημερομηνία Αναχώρησης</label>
-        <input
-          type="date"
-          value={checkOut}
-          onChange={(e) => setCheckOut(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-        />
-      </div>
-    
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Ενήλικες</label>
-        <input
-          type="number"
-          min="0"
-          value={adults}
-          onChange={(e) => setAdults(parseInt(e.target.value) || 0)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-        />
-      </div>
-    
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Παιδιά</label>
-        <input
-          type="number"
-          min="0"
-          value={kids}
-          onChange={(e) => setKids(parseInt(e.target.value) || 0)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-        />
-      </div>
-    
-      <div className="flex items-end">
-        <button
-          onClick={addBooking}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg"
-        >
-          Προσθήκη Κράτησης
-        </button>
-      </div>
-    </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Διαμέρισμα</label>
+                <select
+                  value={selectedApartment}
+                  onChange={(e) => setSelectedApartment(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="1">Διαμέρισμα Αριστερό</option>
+                  <option value="2">Διαμέρισμα Δεξί</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Ημερομηνία Άφιξης</label>
+                <input
+                  type="date"
+                  value={checkIn}
+                  onChange={(e) => setCheckIn(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Ημερομηνία Αναχώρησης</label>
+                <input
+                  type="date"
+                  value={checkOut}
+                  onChange={(e) => setCheckOut(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Ενήλικες</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={adults}
+                  onChange={(e) => setAdults(parseInt(e.target.value) || 0)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Παιδιά</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={kids}
+                  onChange={(e) => setKids(parseInt(e.target.value) || 0)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="flex items-end">
+                <button
+                  onClick={addBooking}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg"
+                >
+                  Προσθήκη
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {['1', '2'].map(apartmentId => {
@@ -211,9 +210,9 @@ export default function ApartmentBooking() {
             
             return (
               <div key={apartmentId} className="bg-white rounded-2xl shadow-xl p-6">
-               <h2 className="text-2xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-indigo-200">
-                 {apartmentId === '1' ? 'Διαμέρισμα Αριστερό' : 'Διαμέρισμα Δεξί'}
-               </h2>
+                <h2 className="text-2xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-indigo-200">
+                  {apartmentId === '1' ? 'Διαμέρισμα Αριστερό' : 'Διαμέρισμα Δεξί'}
+                </h2>
 
                 {apartmentBookings.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
@@ -229,20 +228,21 @@ export default function ApartmentBooking() {
                             <div className="text-sm font-semibold text-indigo-800 mb-2">
                               Κράτηση #{booking.id}
                             </div>
-                           <div className="text-gray-700">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium">Άφιξη:</span>
-                    <span>{formatDate(booking.checkIn)}</span>
-                  </div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium">Αναχώρηση:</span>
-                    <span>{formatDate(booking.checkOut)}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">Άτομα:</span>
-                    <span>{booking.adults || 0} ενήλικες, {booking.kids || 0} παιδιά</span>
-                  </div>
-                </div>
+                            <div className="text-gray-700">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-medium">Άφιξη:</span>
+                                <span>{formatDate(booking.checkIn)}</span>
+                              </div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-medium">Αναχώρηση:</span>
+                                <span>{formatDate(booking.checkOut)}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">Άτομα:</span>
+                                <span>{booking.adults || 0} ενήλικες, {booking.kids || 0} παιδιά</span>
+                              </div>
+                            </div>
+                          </div>
                           <button
                             onClick={() => deleteBooking(booking.id)}
                             className="text-red-500 hover:text-red-700 font-medium text-sm px-3 py-1 rounded hover:bg-red-50"

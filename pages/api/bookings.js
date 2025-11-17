@@ -1,22 +1,4 @@
-import { Redis } from '@upstash/redis';
-
-const BOOKINGS_KEY = 'apartment-bookings';
-
-// Parse REDIS_URL to extract components
-const redisUrl = process.env.REDIS_URL;
-let redis;
-
-if (redisUrl) {
-  // Extract host, port, and password from redis://default:password@host:port format
-  const match = redisUrl.match(/redis:\/\/(?:.*?):(.+?)@(.+?):(\d+)/);
-  if (match) {
-    const [, password, host, port] = match;
-    redis = new Redis({
-      url: `http://${host}:${port}`, // Changed to http:// instead of https://
-      token: password,
-    });
-  }
-}
+import { neon } from '@neondatabase/serverless';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -27,19 +9,33 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  if (!redis) {
-    return res.status(500).json({ error: 'Database not configured' });
-  }
-
   try {
+    // Connect to Neon database using DATABASE_URL environment variable
+    const sql = neon(process.env.DATABASE_URL);
+
+    // Create table if it doesn't exist
+    await sql`
+      CREATE TABLE IF NOT EXISTS bookings (
+        id BIGINT PRIMARY KEY,
+        apartment VARCHAR(10) NOT NULL,
+        check_in DATE NOT NULL,
+        check_out DATE NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
     if (req.method === 'GET') {
-      let bookings = await redis.get(BOOKINGS_KEY);
-      if (!bookings) {
-        bookings = [];
-        await redis.set(BOOKINGS_KEY, JSON.stringify(bookings));
-      } else if (typeof bookings === 'string') {
-        bookings = JSON.parse(bookings);
-      }
+      const rows = await sql`SELECT * FROM bookings ORDER BY check_in ASC`;
+      
+      // Convert to frontend format
+      const bookings = rows.map(row => ({
+        id: Number(row.id),
+        apartment: row.apartment,
+        checkIn: row.check_in,
+        checkOut: row.check_out,
+        createdAt: row.created_at
+      }));
+      
       return res.status(200).json(bookings);
     }
 
@@ -50,23 +46,20 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Λείπουν απαιτούμενα πεδία' });
       }
 
+      const id = Date.now();
+      
+      await sql`
+        INSERT INTO bookings (id, apartment, check_in, check_out)
+        VALUES (${id}, ${apartment}, ${checkIn}, ${checkOut})
+      `;
+      
       const newBooking = {
-        id: Date.now(),
+        id,
         apartment,
         checkIn,
         checkOut,
         createdAt: new Date().toISOString()
       };
-
-      let bookings = await redis.get(BOOKINGS_KEY);
-      if (!bookings) {
-        bookings = [];
-      } else if (typeof bookings === 'string') {
-        bookings = JSON.parse(bookings);
-      }
-      
-      bookings.push(newBooking);
-      await redis.set(BOOKINGS_KEY, JSON.stringify(bookings));
       
       return res.status(201).json(newBooking);
     }
@@ -74,15 +67,7 @@ export default async function handler(req, res) {
     if (req.method === 'DELETE') {
       const id = parseInt(req.url.split('/').pop());
       
-      let bookings = await redis.get(BOOKINGS_KEY);
-      if (!bookings) {
-        bookings = [];
-      } else if (typeof bookings === 'string') {
-        bookings = JSON.parse(bookings);
-      }
-      
-      const updatedBookings = bookings.filter(b => b.id !== id);
-      await redis.set(BOOKINGS_KEY, JSON.stringify(updatedBookings));
+      await sql`DELETE FROM bookings WHERE id = ${id}`;
       
       return res.status(200).json({ success: true });
     }

@@ -64,17 +64,35 @@ export default function ApartmentBooking() {
     }
   };
 
-  const deleteBooking = async (id) => {
-    if (!confirm('Είστε σίγουροι ότι θέλετε να διαγράψετε αυτή την κράτηση;')) return;
+ const deleteBooking = async (id) => {
+  if (!confirm('Είστε σίγουροι ότι θέλετε να διαγράψετε αυτή την κράτηση;')) return;
 
-    try {
-      const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
-      if (!response.ok) throw new Error('Αποτυχία διαγραφής');
-      setBookings(bookings.filter(b => b.id !== id));
-    } catch (err) {
-      alert('Σφάλμα κατά τη διαγραφή.');
+  try {
+    console.log('Attempting to delete booking with ID:', id);
+    
+    const response = await fetch(`${API_URL}/${id}`, { 
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+
+    console.log('Delete response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Delete error:', errorData);
+      throw new Error('Αποτυχία διαγραφής');
     }
-  };
+
+    // Remove from state immediately
+    setBookings(bookings.filter(b => b.id !== id));
+    alert('Η κράτηση διαγράφηκε επιτυχώς!');
+  } catch (err) {
+    console.error('Error deleting booking:', err);
+    alert('Σφάλμα κατά τη διαγραφή. Παρακαλώ δοκιμάστε ξανά.');
+  }
+};
 
   const getBookingsForApartment = (apartmentId) => {
     return bookings

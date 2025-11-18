@@ -13,7 +13,6 @@ export default function ApartmentBooking() {
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [conflictWarning, setConflictWarning] = useState('');
-  const [testingNotification, setTestingNotification] = useState(false);
 
   const API_URL = '/api/bookings';
 
@@ -34,32 +33,6 @@ export default function ApartmentBooking() {
       setError('Σφάλμα φόρτωσης. Δοκιμάστε να ανανεώσετε τη σελίδα.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const testNotifications = async () => {
-    if (!confirm('Θα σταλεί δοκιμαστικό email ειδοποίησης. Συνεχίζετε;')) {
-      return;
-    }
-
-    setTestingNotification(true);
-    try {
-      const response = await fetch('/api/send-notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      const data = await response.json();
-      
-      if (response.ok) {
-        alert(`✅ Επιτυχία! Στάλθηκαν ${data.count || 0} ειδοποιήσεις.\n\nΕλέγξτε το email σας!`);
-      } else {
-        alert(`❌ Σφάλμα: ${data.error}\n\n${data.details || ''}`);
-      }
-    } catch (err) {
-      alert(`❌ Σφάλμα δικτύου: ${err.message}`);
-    } finally {
-      setTestingNotification(false);
     }
   };
 
@@ -282,18 +255,9 @@ export default function ApartmentBooking() {
         )}
 
         <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 mb-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <Calendar className="w-8 h-8 text-indigo-600" />
-              <h1 className="text-3xl font-bold text-gray-800">Σύστημα Κρατήσεων Διαμερισμάτων</h1>
-            </div>
-            <button
-              onClick={testNotifications}
-              disabled={testingNotification}
-              className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {testingNotification ? '⏳ Αποστολή...' : '🔔 Δοκιμή Email'}
-            </button>
+          <div className="flex items-center gap-3 mb-6">
+            <Calendar className="w-8 h-8 text-indigo-600" />
+            <h1 className="text-3xl font-bold text-gray-800">Σύστημα Κρατήσεων Διαμερισμάτων</h1>
           </div>
 
           <div className={`border rounded-lg p-4 mb-6 ${editingId ? 'bg-yellow-50 border-yellow-300' : 'bg-indigo-50 border-indigo-200'}`}>

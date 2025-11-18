@@ -52,7 +52,7 @@ export default async function handler(req, res) {
       return resend.emails.send({
         from: 'Κρατήσεις <onboarding@resend.dev>',
         to: process.env.NOTIFICATION_EMAIL,
-        subject: `🔔 APRT-NOTIFY: Κράτηση σε 2 μέρες`,
+        subject: `🔔 Υπενθύμιση: Κράτηση σε 2 μέρες`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #4F46E5;">🔔 Υπενθύμιση Κράτησης</h2>
@@ -84,7 +84,6 @@ export default async function handler(req, res) {
             
             <hr style="border: 1px solid #E5E7EB; margin: 20px 0;" />
             <p style="color: #6B7280; font-size: 12px;">ID Κράτησης: #${booking.id}</p>
-            <p style="color: #6B7280; font-size: 10px;">APRT-BOOKING-NOTIFICATION-2024</p>
           </div>
         `
       });
